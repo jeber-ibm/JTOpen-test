@@ -30,7 +30,13 @@ import java.io.PrintWriter;
 import java.io.StringBufferInputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-
+import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -2640,13 +2646,46 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
        checkSetup();
 
        //
+       // Determine if the local file needs to be extracted from the classpath
+       // 
+       // Get the URL of the resource inside the JAR file
+       URL url = JDJSTPTestcase.class.getResource(localFile);
+       File file = new File(localFile);
+       long currentTime = file.lastModified();
+       long lastJarModifiedMs = 0;
+       if (url != null) {
+           // If url indicates a jar file, when we will copy to local filesystem
+           if (url.getProtocol().equals("jar")) {
+              URLConnection connection = url.openConnection();
+              lastJarModifiedMs = connection.getLastModified();
+           }
+       } else {
+           System.out.println("Resource not found.");
+       }
+       if (lastJarModifiedMs > currentTime) {
+         int lastSlashIndex = localFile.lastIndexOf('/'); 
+         if (lastSlashIndex > 0) { 
+           String directory = localFile.substring(0,lastSlashIndex); 
+           File directoryFile = new File(directory); 
+           if (!directoryFile.exists()) { 
+             directoryFile.mkdirs(); 
+           }
+         }
+         
+         InputStream is = url.openStream();
+         FileSystem fsDefault = FileSystems.getDefault(); 
+         Files.copy(is, fsDefault.getPath(localFile), StandardCopyOption.REPLACE_EXISTING);
+         fsDefault.close(); 
+         is.close(); 
+         currentTime = file.lastModified();
+       }
+
+       //
        // Determine if server file needs to be updated
        //
 
-       File file = new File(localFile);
-       long currentTime = file.lastModified();
        if (currentTime == 0L) {
-	   throw new Exception("File "+localFile+" not found"); 
+	         throw new Exception("File "+localFile+" not found"); 
        } 
        long lastTime = 0 ;
        if (debug) System.out.println("JDJSTP.debug: updateServerFile:  localFile="+localFile+" ts="+currentTime+" now="+System.currentTimeMillis()); 

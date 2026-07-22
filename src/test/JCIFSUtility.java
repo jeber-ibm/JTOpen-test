@@ -42,6 +42,9 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.Hashtable;
 
+// import org.codelibs.jcifs.smb.Config;
+// import org.codelibs.jcifs.smb.context.SingletonContext;
+
 import com.ibm.as400.access.AS400;
 import com.ibm.as400.access.AS400JDBCDriver;
 import com.ibm.as400.access.ISeriesNetServer;
@@ -66,9 +69,10 @@ public class JCIFSUtility {
 
     // Turn on extended security.
     // SingletonContext config = org.codelibs.jcifs.smb.context.SingletonContext.getInstance();
-    // config.setProperty("jcifs.util.loglevel", "3");
-    // jcifs.Config.setProperty("jcifs.smb.client.useExtendedSecurity", "false");
-    // jcifs.Config.setProperty("jcifs.smb.lmCompatibility", "0");
+    // config.set("jcifs.util.loglevel", "3");
+    // Config
+    // Config.setProperty("jcifs.smb.client.useExtendedSecurity", "false");
+    // Config.setProperty("jcifs.smb.lmCompatibility", "0");
 
   }
 
