@@ -1256,6 +1256,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
           // Check to see if the file needs to be recompiled
           //
           String sourceFile = sourcepath+"/"+javaSource;
+          refreshLocalFile(sourceFile); 
           String destFile   = nativeBaseDir+"/"+sourcepath+"/"+javaSource;
 	  String destClasses  = nativeBaseDir+"/"+sourcepath+"/"+ javaSource.substring(0, javaSource.lastIndexOf(".java")) + "*.class";
 	  String serverPf   = genPfName(javaSource);
@@ -1343,6 +1344,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 			// Check to see if the file needs to be recompiled
 			//
 			String sourceFile = sourcepath + "/" + javaSource;
+			refreshLocalFile(sourceFile);
 			String destFile;
 			if (usePase) {
 				destFile = "/QOpenSys" + nativeBaseDir + "/" + sourcepath + "/" + javaSource;
@@ -1407,6 +1409,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 	      // Check to see if the file needs to be recompiled
 	      //
 	      String sourceFile = sourcepath+"/"+javaSource;
+              refreshLocalFile(sourceFile);
 	      String destFile   = nativeBaseDir+"/"+sourcepath+"/"+javaSource;
 	      if (usePase) {
 		  destFile   = "/QOpenSys/"+nativeBaseDir+"/"+sourcepath+"/"+javaSource;
@@ -1575,6 +1578,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
               String upperBase = base.toUpperCase();
 
 	      String sourceFile = sourcepath+"/"+javaSource;
+              refreshLocalFile(sourceFile);
 	      String destFile   = nativeBaseDir+"/"+sourcepath+"/"+javaSource;
               String serverPf   = upperBase;
 	      String command = ""; 
@@ -1645,6 +1649,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 	      // load the file on the system 
 	      //
 	      String sourceFile = sourcepath+"/"+javaSource;
+              refreshLocalFile(sourceFile);
 	      String destFile   = nativeBaseDir+"/"+sourcepath+"/"+javaSource;
               String serverPf   = upperBase;
 	      try { 
@@ -1679,6 +1684,8 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 			String destFile = nativeBaseDir + "/" + sourcepath + "/" + source;
 			String serverPf = genPfName(source);
 
+	                refreshLocalFile(sourceFile);
+
 			boolean updated = updateServerFile(sourceFile, serverPf, destFile, destFile);
 			if (!updated) {
 				if (debug)
@@ -1705,6 +1712,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 
 			// transfer the file up
 			String sourceFile = sourcepath + "/" + source;
+			refreshLocalFile(sourceFile);
 			String destFile = nativeBaseDir + "/" + sourcepath + "/" + source;
 			String serverPf = genPfName(source);
 
@@ -1759,6 +1767,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 	        // Check to see if the file needs to be recompiled
 	        //
 		File sourceFile = new File( sourcepath+"/"+javaSource);
+		refreshLocalFile( sourcepath+"/"+javaSource);
 		File newSourceFile = new File (javaRunPath+"/"+javaSource); 
 		File destFile   = new File( javaRunPath+"/"+classFilename);
 		if (destFile.exists()) {
@@ -1905,6 +1914,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
                 rs.close();
 		
                 File sourceFile = new File( sourcepath+"/"+javaSource);
+                refreshLocalFile(sourcepath+"/"+javaSource);
                 File newSourceFile = new File (javaRunPath+"/"+javaSource); 
                 File destFile   = new File( javaRunPath+"/"+classFilename);
                 if (destFile.exists()) {
@@ -2106,6 +2116,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 	  //
 	 String base = sqljSource.substring(0, sqljSource.lastIndexOf(".sqlj"));
 	 String sourceFile = sourcepath+"/"+sqljSource;
+	 refreshLocalFile(sourceFile); 
 	 String serverFile = nativeBaseDir+"/"+base+".sqlj"; 
 	 String destFile   = nativeBaseDir+"/"+base+".class"; 
 	 String javaFile   = nativeBaseDir+"/"+base+".java"; 
@@ -2633,18 +2644,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
 
      } 
 
-
-     /**
-      * Assures that a file on the server is up to date.
-      * Returns true if the file was updated. 
-      * Assumptions.
-      * JDJSTPENV library created.
-      * JDJSTPCMD procedure exists. 
-      */ 
-     public static boolean updateServerFile(String localFile, String serverPf, String serverFile, String serverGeneratedFile) throws Exception {
-       
-       checkSetup();
-
+     public static void refreshLocalFile(String localFile) throws Exception {
        //
        // Determine if the local file needs to be extracted from the classpath
        // 
@@ -2680,9 +2680,25 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
          currentTime = file.lastModified();
        }
 
+       
+     }
+
+     /**
+      * Assures that a file on the server is up to date.
+      * Returns true if the file was updated. 
+      * Assumptions.
+      * JDJSTPENV library created.
+      * JDJSTPCMD procedure exists. 
+      */ 
+     public static boolean updateServerFile(String localFile, String serverPf, String serverFile, String serverGeneratedFile) throws Exception {
+       
+       checkSetup();
+
        //
        // Determine if server file needs to be updated
        //
+       File file = new File(localFile);
+       long currentTime = file.lastModified();
 
        if (currentTime == 0L) {
 	         throw new Exception("File "+localFile+" not found"); 
@@ -6289,9 +6305,11 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
         //
 	if (testext.equals("clp")) {
 	    command = sourcepath+"/"+testpgm; 
+            refreshLocalFile(command); 
 	    JDSQL400.run(command, output, userId, PasswordVault.decryptPasswordLeak(encryptedPassword, "JDJSTPTestcase.rau.1") );
 	} else if (testext.equals("jdbc")) {
     command = sourcepath+"/"+testpgm; 
+    refreshLocalFile(command); 
     runJdbcClient(command, output, userId,  encryptedPassword); 
 	} else {
 	    throw new Exception("Cannot run test "+testpgm+".  Extension "+testext+" not recognized");
