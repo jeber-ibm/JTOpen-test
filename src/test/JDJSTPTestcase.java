@@ -2732,9 +2732,6 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
        //
        // Determine if server file needs to be updated
        //
-       File file = new File(localFile);
-       long currentTime = file.lastModified();
-
        if (currentTime == 0L) {
 	         throw new Exception("File "+localFile+" not found"); 
        } 
