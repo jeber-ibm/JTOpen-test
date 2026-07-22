@@ -2695,6 +2695,41 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
        checkSetup();
 
        //
+       // Determine if the local file needs to be extracted from the classpath
+       // 
+       // Get the URL of the resource inside the JAR file
+       URL url = JDJSTPTestcase.class.getResource(localFile);
+       File file = new File(localFile);
+       long currentTime = file.lastModified();
+       long lastJarModifiedMs = 0;
+       if (url != null) {
+           // If url indicates a jar file, when we will copy to local filesystem
+           if (url.getProtocol().equals("jar")) {
+              URLConnection connection = url.openConnection();
+              lastJarModifiedMs = connection.getLastModified();
+           }
+       } else {
+           System.out.println("Resource not found.");
+       }
+       if (lastJarModifiedMs > currentTime) {
+         int lastSlashIndex = localFile.lastIndexOf('/'); 
+         if (lastSlashIndex > 0) { 
+           String directory = localFile.substring(0,lastSlashIndex); 
+           File directoryFile = new File(directory); 
+           if (!directoryFile.exists()) { 
+             directoryFile.mkdirs(); 
+           }
+         }
+         
+         InputStream is = url.openStream();
+         FileSystem fsDefault = FileSystems.getDefault(); 
+         Files.copy(is, fsDefault.getPath(localFile), StandardCopyOption.REPLACE_EXISTING);
+         fsDefault.close(); 
+         is.close(); 
+         currentTime = file.lastModified();
+       }
+
+       //
        // Determine if server file needs to be updated
        //
        File file = new File(localFile);
