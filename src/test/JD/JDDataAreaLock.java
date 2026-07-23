@@ -49,8 +49,6 @@ public class JDDataAreaLock {
   
   public void lock(String comment, int waitTime) throws SQLException {
     
-    
-    
     String sql="CALL QSYS2.QCMDEXC(' CRTDTAARA DTAARA("+library_+"/"+dataArea_+") TYPE(*CHAR) LEN(2000)')";
     try { 
       s_.execute(sql); 
@@ -68,8 +66,13 @@ public class JDDataAreaLock {
     }
     // Lock exclusive on the system and delay one second 
    try {  
+    sql="CALL SYSTOOLS.LPRINTF('ALLOCATING ("+library_+"/"+dataArea_+" *DTAARA *EXCLRD)')";
+    s_.execute(sql); 
     sql="CALL QSYS2.QCMDEXC('  ALCOBJ OBJ(("+library_+"/"+dataArea_+" *DTAARA *EXCLRD)) WAIT("+waitTime+")    ')";
     s_.execute(sql); 
+    sql="CALL SYSTOOLS.LPRINTF('ALLOCATED ("+library_+"/"+dataArea_+" *DTAARA *EXCLRD)')";
+    s_.execute(sql); 
+    
     // Look at the data area to make sure it isn't already locked
     sql="select JOB_NAME, TRIM(INTERPRET(REPLACE(BINARY(DATA_AREA_VALUE),BX'00',BX'40') AS CHAR(2000) CCSID 37)) "
         + "from qsys2.data_area_info where DATA_AREA_LIBRARY='" + library_
@@ -145,6 +148,9 @@ public class JDDataAreaLock {
     
     String sql="NOTSET";
     try {
+      sql="CALL SYSTOOLS.LPRINTF('UNLOCKING ("+library_+"/"+dataArea_+" *DTAARA *EXCLRD)')";
+      s_.execute(sql); 
+
       if (ts == null)
         ts = new Timestamp(System.currentTimeMillis());
       String callerString = getCallString();
@@ -155,6 +161,7 @@ public class JDDataAreaLock {
       sql = "CALL QSYS2.QCMDEXC('  DLCOBJ OBJ((" + library_ + "/" + dataArea_
           + " *DTAARA *EXCLRD))   ')";
       s_.execute(sql);
+      sql="CALL SYSTOOLS.LPRINTF('UNLOCKED ("+library_+"/"+dataArea_+" *DTAARA *EXCLRD)')";
 
     } catch (SQLException e) {
       System.out.println("Error on " + sql);

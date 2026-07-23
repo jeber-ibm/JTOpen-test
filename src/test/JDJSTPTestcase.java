@@ -5323,21 +5323,30 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
         throw new Exception("Unrecognized jdk"+jdk); 
       }
     }
+    
+    
+    public static boolean resourceExists(String filename) { 
+      File checkFile = new File(filename);
+      if (checkFile.exists()) { 
+        return true; 
+      }
+      URL url = JDJSTPTestcase.class.getResource("/"+filename);
+      if (url != null) return true; 
+      return false; 
+    }
+    
     public static String getExpectedOutputFile(
 					       String testbase,
 					       String inVariation,
 					       StringBuffer possibleOutputFiles) throws Exception  {
-
-
     String expectedOutput;
-    File checkFile; 
     String variationString="."+inVariation;
     if (inVariation.length() == 0) variationString = "";
 
     expectedOutput = exppath + "/" + testbase + variationString + ".rxp" + vrm
         + ".jdkXX";
-    checkFile = new File(expectedOutput);
-    if (!checkFile.exists()) { 
+    
+    if (!resourceExists(expectedOutput)) { 
       possibleOutputFiles.append(" " + expectedOutput);
     }
 
@@ -5347,13 +5356,13 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
     int currentJdk = JVMInfo.getJDK(); 
     
     
-    for (int i = 0; i < vrms.length && !checkFile.exists(); i++) {
+    for (int i = 0; i < vrms.length && !resourceExists(expectedOutput); i++) {
       if (vrm >= vrms[i]) {  /* current vrm greater than loop vrm */ 
         String vrmString = ""+vrms[i]; 
         if (vrms[i] == 0) { 
           vrmString=""; 
         }
-        for (int j = 0; j < jdks.length && !checkFile.exists(); j++) {
+        for (int j = 0; j < jdks.length && !resourceExists(expectedOutput); j++) {
           if (currentJdk >= jdks[j]) {
             String jdkString = getJdkString(jdks[j], vrms[i]); /*
                                                                 * return .jdk
@@ -5363,26 +5372,23 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
               // check for J9
               expectedOutput = exppath + "/" + testbase + variationString
                   + ".rxp" + vrmString + jdkString + ".j9";
-              checkFile = new File(expectedOutput);
-              if (!checkFile.exists()) {
+              if (!resourceExists(expectedOutput)) {
                 possibleOutputFiles.append(" " + expectedOutput);
               }
-            if (!checkFile.exists()) {
+            if (!resourceExists(expectedOutput)) {
               if (isToolbox) {
                 // check for toolbox
                 expectedOutput = exppath + "/" + testbase + variationString
                     + ".rxpt" + vrmString + jdkString;
-                checkFile = new File(expectedOutput);
-                if (!checkFile.exists()) {
+                if (resourceExists(expectedOutput)) {
                   possibleOutputFiles.append(" " + expectedOutput);
                 }
               }
-              if (!checkFile.exists()) {
+              if (!resourceExists(expectedOutput)) {
 
                 expectedOutput = exppath + "/" + testbase + variationString
                     + ".rxp" + vrmString + jdkString;
-                checkFile = new File(expectedOutput);
-                if (!checkFile.exists()) {
+                if (!resourceExists(expectedOutput)) {
                   /* Do not list old releases as possible output files */
                   if (vrmString.equals("610") || vrmString.equals("550")
                       || vrmString.equals("540")
@@ -5403,7 +5409,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
       } /* current vrm not less than loop vrm */
     } /* for i -- vrms */
 
-    if (!checkFile.exists()) { 
+    if (!resourceExists(expectedOutput)) { 
       System.out.println("Did not find file:  Tried :"+possibleOutputFiles.toString());
     }
     return expectedOutput;
