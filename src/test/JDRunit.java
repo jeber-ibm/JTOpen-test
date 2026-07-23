@@ -82,8 +82,8 @@ public class JDRunit {
   public static String JCIFS_JAR="jcifs-3.0.2.jar"; 
 
   public static final String TMP = "/tmp";
-  public static String testcaseCode = JTOpenTestEnvironment.testcaseHomeDirectory;
-
+  public static String testcaseHome = JTOpenTestEnvironment.testcaseHomeDirectory;
+  public static String testcaseClasspath = testcaseHome+":"+testcaseHome+"/JTOpen-test.jar"; 
   static Hashtable<String, String> rdbToCreatedUserid = new Hashtable<String, String>();
   static Hashtable<String, String> rdbToCreatedPassword = new Hashtable<String, String>();
   static boolean debug = false;
@@ -216,10 +216,6 @@ public class JDRunit {
     on400open = JTOpenTestEnvironment.isOS400open; 
     onLinux = JTOpenTestEnvironment.isLinux;
     
-    property = System.getProperty("useTestJar"); 
-    if (property != null && (property.toUpperCase().indexOf('N')< 0)) {
-      testcaseCode = "JTOpen-test.jar"; 
-    }
   }
 
   //
@@ -976,7 +972,7 @@ public class JDRunit {
       String[] activationJarLocations = {
           userDir + sep + "jars" + sep    + "activation.jar",
           "C:" + sep + "activation.jar",
-          testcaseCode+"/jars/activation.jar",
+          testcaseHome+"/jars/activation.jar",
           "/qibm/proddata/os400/java400/ext/activation.jar",
           "C:\\Documents and Settings\\Administrator\\workspace\\lib\\activation.jar", };
 
@@ -1002,7 +998,7 @@ public class JDRunit {
       String[] mailJarLocations = {
           userDir + sep + "jars" + sep + "mail.jar",
           "C:" + sep + "mail.jar", 
-          testcaseCode+"/jars/mail.jar",
+          testcaseHome+"/jars/mail.jar",
           "/qibm/proddata/os400/java400/ext/mail.jar",
           "C:\\Documents and Settings\\Administrator\\workspace\\lib\\mail.jar", };
       for (int i = 0; i < mailJarLocations.length && urls[1] == null; i++) {
@@ -2128,13 +2124,13 @@ public class JDRunit {
 
     if (useJaCoCo) {
       if (toolboxJar.indexOf("java6") > 0) {
-        toolboxJar = testcaseCode+"/jacoco/java6/jt400.jar";
+        toolboxJar = testcaseHome+"/jacoco/java6/jt400.jar";
       } else if (toolboxJar.indexOf("java8") > 0) {
-        toolboxJar = testcaseCode+"/jacoco/java8/jt400.jar";
+        toolboxJar = testcaseHome+"/jacoco/java8/jt400.jar";
       } else if (toolboxJar.indexOf("java9") > 0) {
-        toolboxJar = testcaseCode+"/jacoco/java9/jt400.jar";
+        toolboxJar = testcaseHome+"/jacoco/java9/jt400.jar";
       } else {
-        toolboxJar = testcaseCode+"/jacoco/java0/jt400.jar";
+        toolboxJar = testcaseHome+"/jacoco/java0/jt400.jar";
       }
     }
 
@@ -2270,7 +2266,8 @@ public void setExtraJavaArgs(String extraJavaArgs) {
 
     if (JTOpenTestEnvironment.isWindows && (vmInitials.endsWith("3") || vmInitials.endsWith("6"))) {
        runNativeTestFromWindows = true; 
-       testcaseCode="/home/jdbctest"; 
+       testcaseHome="/home/jdbctest"; 
+       testcaseClasspath="/home/jdbctest";
     }
 
 
@@ -2280,8 +2277,8 @@ public void setExtraJavaArgs(String extraJavaArgs) {
     inputVector.addElement("echo input is " + runitInputFile);
     inputVector.addElement("echo output is " + runitOutputFile);
     inputVector.addElement(iniInfo.toString());
-    inputVector.addElement("echo cd "+testcaseCode);
-    inputVector.addElement("cd "+testcaseCode);
+    inputVector.addElement("echo cd "+testcaseHome);
+    inputVector.addElement("cd "+testcaseHome);
 
     String javaExecPath = javaHome;
     //
@@ -2326,18 +2323,18 @@ public void setExtraJavaArgs(String extraJavaArgs) {
 
     String newTestJar = iniProperties.getProperty("testJar");
     if (newTestJar != null) {
-      testcaseCode = newTestJar; 
+      testcaseClasspath = newTestJar; 
     }
 
     /* Use JTOpen-test.jar if exists in the classpath. */ 
     /* Assume that the JTOpen-test.jar is in the current directory */ 
     String currentClassPath=System.getProperty("java.class.path"); 
     if (currentClassPath.indexOf("JTOpen-test.jar") >= 0) { 
-        testcaseCode = "JTOpen-test.jar"; 
+        testcaseClasspath = "JTOpen-test.jar"; 
     }
     
 
-    String setClasspath = "CLASSPATH="+toolboxJar+":"+testcaseCode+":"
+    String setClasspath = "CLASSPATH="+toolboxJar+":"+testcaseClasspath+":"
         + ":/qibm/proddata/java400/ext/translator.zip:"
         + toolsJar
         + ":jars/googleauth-1.5.0.jar:jars/commons-codec-1.16.0.jar"
@@ -2439,12 +2436,12 @@ public void setExtraJavaArgs(String extraJavaArgs) {
       String currentClasspath = System.getProperty("java.class.path");
 
       
-      if (testcaseCode.indexOf(".jar") < 0) {
-        testcaseCode=System.getProperty("user.dir"); 
+      if (testcaseClasspath.indexOf(".jar") < 0) {
+        testcaseClasspath=System.getProperty("user.dir"); 
       } else {
-        testcaseCode=System.getProperty("user.dir") +File.separator+testcaseCode; 
+        testcaseClasspath=System.getProperty("user.dir") +File.separator+testcaseClasspath; 
       }
-      setClasspath = "CLASSPATH=\"" + toolboxJar + ";" +  testcaseCode+ ";"
+      setClasspath = "CLASSPATH=\"" + toolboxJar + ";" +  testcaseClasspath+ ";"
           + currentClasspath+";"
           + toolsJar + ";" + 
           System.getProperty("user.dir") + ""+File.separator+"jars"+File.separator+"db2_classes.jar;" + 
@@ -2475,7 +2472,7 @@ public void setExtraJavaArgs(String extraJavaArgs) {
       }
 
       
-      setClasspath = "CLASSPATH=\""+testcaseCode+":" + toolboxJar + ":"
+      setClasspath = "CLASSPATH=\""+testcaseClasspath+":" + toolboxJar + ":"
           + toolsJar + ":"  
           + System.getProperty("user.dir") + "/jars/fscontext.jar:" 
           + System.getProperty("user.dir") + "/jars/providerutil.jar:" 
@@ -2742,11 +2739,11 @@ public void setExtraJavaArgs(String extraJavaArgs) {
         + savefileName + " -Dtest.parentJob=" + parentJob + " " + javaArgs;
 
     if (useJaCoCo) {
-        File destDir = new File(testcaseCode+"/jacoco/"+initials);
+        File destDir = new File(testcaseHome+"/jacoco/"+initials);
         if (!destDir.exists()) {
             destDir.mkdir(); 
         }
-        javaArgs = "-javaagent:"+testcaseCode+"/jacoco/lib/jacocoagent.jar=destfile="+testcaseCode+"/jacoco/"+initials+"/"+test+".exec,includes=com.ibm.as400.access.* " + javaArgs; 
+        javaArgs = "-javaagent:"+testcaseHome+"/jacoco/lib/jacocoagent.jar=destfile="+testcaseHome+"/jacoco/"+initials+"/"+test+".exec,includes=com.ibm.as400.access.* " + javaArgs; 
     } 
 
     String javaCommand = "java " + javaArgs + " " + testArgs + " -lib "
@@ -2967,7 +2964,7 @@ public void setExtraJavaArgs(String extraJavaArgs) {
       // any environment variables.
       // This scenario should only typically happened on V6R1
       if ((System.getProperty("java.home").indexOf("QOpenSys") > 0) && (javaHome.indexOf("QOpenSys") == -1)) {
-        String[] envp = { "PATH=/usr/bin:", "HOME=" + testcaseCode, };
+        String[] envp = { "PATH=/usr/bin:", "HOME=" + testcaseHome, };
         if (debug)
           System.out.println("Calling exec1 with envp and cmdArray[0]=" + cmdArray1[0]);
         shellTestProcess = runtime.exec(cmdArray1, envp);
@@ -4288,7 +4285,7 @@ public void setExtraJavaArgs(String extraJavaArgs) {
     try {
        
       
-        String command = "java -classpath "+testcaseCode+":"+jt400jar+" com.ibm.as400.access.ProxyServer"; 
+        String command = "java -classpath "+testcaseClasspath+":"+jt400jar+" com.ibm.as400.access.ProxyServer"; 
         System.out.println("JDRunit: starting ProxyServer on default port using: "+command); 
       // Need to include testcaseCode because the source for the serialized
       // lobs is located there.
