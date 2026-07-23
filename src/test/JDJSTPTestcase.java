@@ -2649,7 +2649,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
        // Determine if the local file needs to be extracted from the classpath
        // 
        // Get the URL of the resource inside the JAR file
-       URL url = JDJSTPTestcase.class.getResource(localFile);
+       URL url = JDJSTPTestcase.class.getResource("/"+localFile);
        File file = new File(localFile);
        long currentTime = file.lastModified();
        long lastJarModifiedMs = 0;
@@ -2658,9 +2658,10 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
            if (url.getProtocol().equals("jar")) {
               URLConnection connection = url.openConnection();
               lastJarModifiedMs = connection.getLastModified();
+              if (debug) System.out.println("Resource "+localFile+"  found in jar.");
            }
        } else {
-           System.out.println("Resource not found.");
+           if (debug) System.out.println("Resource "+localFile+" not found in jar.");
        }
        if (lastJarModifiedMs > currentTime) {
          int lastSlashIndex = localFile.lastIndexOf('/'); 
