@@ -86,6 +86,8 @@ extends JDTestcase
     private static  String           HCLIConnect_ = null; 
     private static  String           ZCLIConnect_ = null; 
     private static  String           LCLIConnect_ = null; 
+    @SuppressWarnings("resource")
+    static          FileSystem fsDefault = FileSystems.getDefault(); 
 
     public static String getGCLIConnect() { 
       if (GCLIConnect_ == null)  {
@@ -2674,9 +2676,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
          }
          
          InputStream is = url.openStream();
-         FileSystem fsDefault = FileSystems.getDefault(); 
          Files.copy(is, fsDefault.getPath(localFile), StandardCopyOption.REPLACE_EXISTING);
-         fsDefault.close(); 
          is.close(); 
          currentTime = file.lastModified();
        }
@@ -2699,7 +2699,7 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
        // Determine if the local file needs to be extracted from the classpath
        // 
        // Get the URL of the resource inside the JAR file
-       URL url = JDJSTPTestcase.class.getResource(localFile);
+       URL url = JDJSTPTestcase.class.getResource("/"+localFile);
        File file = new File(localFile);
        long currentTime = file.lastModified();
        long lastJarModifiedMs = 0;
@@ -2708,9 +2708,10 @@ super(systemObject, testcaseName, namesAndVars, runMode, fileOutputStream,  pass
            if (url.getProtocol().equals("jar")) {
               URLConnection connection = url.openConnection();
               lastJarModifiedMs = connection.getLastModified();
+              if (debug) System.out.println("Resource "+localFile+" copied from jar file.");
            }
        } else {
-           System.out.println("Resource not found.");
+           if (debug) System.out.println("Resource "+localFile+" not found.");
        }
        if (lastJarModifiedMs > currentTime) {
          int lastSlashIndex = localFile.lastIndexOf('/'); 
