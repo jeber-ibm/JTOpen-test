@@ -2267,7 +2267,7 @@ public void setExtraJavaArgs(String extraJavaArgs) {
     if (JTOpenTestEnvironment.isWindows && (vmInitials.endsWith("3") || vmInitials.endsWith("6"))) {
        runNativeTestFromWindows = true; 
        testcaseHome="/home/jdbctest"; 
-       testcaseClasspath="/home/jdbctest";
+       testcaseClasspath="/home/jdbctest:/home/jdbctest/JTOpen-test.jar";
     }
 
 
