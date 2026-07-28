@@ -11,18 +11,6 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////
-//
-// JTOpen (IBM Toolbox for Java - OSS version)
-//
-// Filename:  JTOpenDownloadDevJars
-//
-// The source code contained herein is licensed under the IBM Public License
-// Version 1.0, which has been approved by the Open Source Initiative.
-// Copyright (C) 1997-2023 International Business Machines Corporation and
-// others.  All rights reserved.
-//
-///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////
 //
 //  File Name:  JTOpenDownloadDevJars.java
@@ -33,6 +21,8 @@
 //
 // This class is designed to run on an IBM i and download the latest development
 // toolbox jar files from git and install them on the system. 
+//
+// This tool requires a GITHUB token to be set in ini/netrc.ini to prevent problems with rate limiting. 
 //
 //
 // This can be automated using the following.
@@ -147,11 +137,21 @@ public class JTOpenDownloadDevJars {
 	    // run the query to show the possible URLS. 
             String sql;
             Statement stmt = connection.createStatement();
+            Properties iniProperties = getIniProperties(); 
+            githubAuth=iniProperties.getProperty("GITHUBTOKEN"); 
+            if (githubAuth == null) {
+                stmt.close(); 
+                connection.close(); 
+                throw new Exception("Unable to get GITHUBTOKEN from ini/netrc.ini"); 
+            }
+            System.out.println("Authorization set to "+githubAuth); 
+
             sql = "SELECT URL,"
                 + "TIMESTAMP( SUBSTRING(UPDATED_AT,1,10) || ' ' || SUBSTRING(UPDATED_AT,12,8)) + CURRENT TIMEZONE AS UPDATED , "
                 + "CURRENT TIMEZONE as CURRENT_TIMEZONE, "
                 + " NAME, BRANCH"
-                + " FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\"}, \"sslTolerate\":true}'), '$.artifacts[*]' "
+                + " FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\""
+                    + ",\"authorization\":\""+githubAuth+"\"}, \"sslTolerate\":true}'), '$.artifacts[*]' "
                 + "COLUMNS ( "
                 + "URL VARCHAR(200) CCSID 1208 PATH '$.url', "
                 + "UPDATED_AT VARCHAR(40) PATH '$.updated_at', "
@@ -172,7 +172,7 @@ public class JTOpenDownloadDevJars {
 	    }
 	    if (branch == null) { 
 		sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"',"
-		    + "'{\"headers\":{\"Accept\":\"application/vnd.github+json\"}, \"sslTolerate\":true}'), "
+		    + "'{\"headers\":{\"Accept\":\"application/vnd.github+json\",\"authorization\":\""+githubAuth+"\"}, \"sslTolerate\":true}'), "
 		    + "'$.artifacts[*]' "
 		    + "COLUMNS ( "
 		    + "URL VARCHAR(200) CCSID 1208 PATH '$.url', "
@@ -180,12 +180,12 @@ public class JTOpenDownloadDevJars {
 	            + "NAME VARCHAR(40) PATH '$.name',"
 		    + "BRANCH VARCHAR(120) PATH '$.workflow_run.head_branch'  )) WHERE BRANCH='main' AND NAME='Package' ORDER BY UPDATED_AT desc FETCH FIRST 1 ROWS ONLY";
 	    } else if ("ANY".equalsIgnoreCase(branch)) {
-		sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\"}, \"sslTolerate\":true}'), '$.artifacts[*]' "
+		sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\",\"authorization\":\""+githubAuth+"\"}, \"sslTolerate\":true}'), '$.artifacts[*]' "
 		    + "COLUMNS ( URL VARCHAR(200) CCSID 1208 PATH '$.url', UPDATED_AT VARCHAR(40) PATH '$.updated_at', "
                     + "NAME VARCHAR(40) PATH '$.name',"
 		    + "BRANCH VARCHAR(120) PATH '$.workflow_run.head_branch'  )) WHERE NAME='Package' ORDER BY UPDATED_AT desc FETCH FIRST 1 ROWS ONLY";
 	    } else {
-		sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\"}, \"sslTolerate\":true}'), '$.artifacts[*]' "
+		sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\",\"authorization\":\""+githubAuth+"\"}, \"sslTolerate\":true}'), '$.artifacts[*]' "
 		    + "COLUMNS ( URL VARCHAR(200) CCSID 1208 PATH '$.url', UPDATED_AT VARCHAR(40) PATH '$.updated_at', "
                     + "NAME VARCHAR(40) PATH '$.name',"
 		    + "BRANCH VARCHAR(120) PATH '$.workflow_run.head_branch'  )) WHERE  NAME='Package' and BRANCH='"+branch+"' ORDER BY UPDATED_AT desc FETCH FIRST 1 ROWS ONLY";
@@ -236,7 +236,7 @@ public class JTOpenDownloadDevJars {
 	    //
 	    // Repeat for the test jar files
 	    //
-	    sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsTestUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\"}, \"sslTolerate\":true}'), '$.artifacts[*]' COLUMNS ( URL VARCHAR(200) CCSID 1208 PATH '$.url', UPDATED_AT VARCHAR(40) PATH '$.updated_at', BRANCH VARCHAR(40) PATH '$.workflow_run.head_branch'  )) WHERE BRANCH='main' ORDER BY UPDATED_AT desc FETCH FIRST 1 ROWS ONLY";
+	    sql = "SELECT * FROM JSON_TABLE( HTTP_GET('"+artifactsTestUrl+"','{\"headers\":{\"Accept\":\"application/vnd.github+json\",\"authorization\":\""+githubAuth+"\"}, \"sslTolerate\":true}'), '$.artifacts[*]' COLUMNS ( URL VARCHAR(200) CCSID 1208 PATH '$.url', UPDATED_AT VARCHAR(40) PATH '$.updated_at', BRANCH VARCHAR(40) PATH '$.workflow_run.head_branch'  )) WHERE BRANCH='main' ORDER BY UPDATED_AT desc FETCH FIRST 1 ROWS ONLY";
 	    stmt = connection.createStatement();
 	    System.out.println("Running to get latest artifact: "+sql); 
 	    rs = stmt.executeQuery(sql);
@@ -361,6 +361,23 @@ public class JTOpenDownloadDevJars {
 
   }
 
+    public static Properties getIniProperties() throws Exception { 
+      /* Github requires authorization to download a non-release artifacte */
+      Properties iniProperties = new Properties();
+
+      {
+          String filename = "ini/netrc.ini";
+          File file = new File(filename); 
+          if (!file.exists()) {
+              throw new Exception("Unable to load ini/netrc.ini to get GITHUB token");
+          } 
+          InputStream fileInputStream=        new FileInputStream(filename);
+          iniProperties.load(fileInputStream);
+          fileInputStream.close();
+      }
+      
+      return iniProperties; 
+    }
 
     public static void fetchFile(String destinationDirectory,
 				 String fileName,
@@ -371,19 +388,8 @@ public class JTOpenDownloadDevJars {
 	URL url = new URL(urlPath); 
 	URLConnection connection = url.openConnection();
 
-	/* Github requires authorization to download a non-release artifacte */
-	Properties iniProperties = new Properties();
-
-	{
-	    String filename = "ini/netrc.ini";
-	    File file = new File(filename); 
-	    if (!file.exists()) {
-		throw new Exception("Unable to load ini/netrc.ini to get GITHUB token");
-	    } 
-	    InputStream fileInputStream= 	new FileInputStream(filename);
-	    iniProperties.load(fileInputStream);
-	    fileInputStream.close();
-	}
+	Properties iniProperties = getIniProperties();
+	
 	githubAuth=iniProperties.getProperty("GITHUBTOKEN"); 
 	if (githubAuth == null) {
 	    throw new Exception("Unable to get GITHUBTOKEN from ini/netrc.ini"); 
