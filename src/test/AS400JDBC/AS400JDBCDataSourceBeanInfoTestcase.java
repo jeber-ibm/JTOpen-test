@@ -320,7 +320,7 @@ public class AS400JDBCDataSourceBeanInfoTestcase extends Testcase {
     StringBuffer failMessage = new StringBuffer();
     boolean passed = true;
     try {
-      int expectedCount = 120;
+      int expectedCount = 121;
       AS400JDBCDataSourceBeanInfo bi = new AS400JDBCDataSourceBeanInfo();
       PropertyDescriptor[] pd = bi.getPropertyDescriptors();
       if (pd.length != expectedCount) {
@@ -458,6 +458,7 @@ public class AS400JDBCDataSourceBeanInfoTestcase extends Testcase {
       propertyTypes.put("useSock5", "boolean");
       propertyTypes.put("virtualThreads", "boolean");
       propertyTypes.put("trimCharFields", "boolean");
+      propertyTypes.put("authenticationVerificationId", "java.lang.String");
 
       for (int i = 0; i < pd.length; i++) {
         String value = (String) propertyTypes.get(pd[i].getName());
@@ -601,6 +602,7 @@ public class AS400JDBCDataSourceBeanInfoTestcase extends Testcase {
       getPropertyMethods.put("useSock5", "isUseSock5");
       getPropertyMethods.put("virtualThreads", "isVirtualThreads");
       getPropertyMethods.put("trimCharFields", "isTrimCharFields");
+      getPropertyMethods.put("authenticationVerificationId", "getAuthenticationVerificationId");
 
       for (int i = 0; i < pd.length; i++) {
         if (pd[i].getName().equals("password")) // password.
@@ -757,6 +759,8 @@ public class AS400JDBCDataSourceBeanInfoTestcase extends Testcase {
       setPropertyMethods.put("tlsTruststore", "setTlsTruststore");
       setPropertyMethods.put("tlsTruststorePassword", "setTlsTruststorePassword");
       setPropertyMethods.put("useSock5", "setUseSock5");
+      setPropertyMethods.put("authenticationVerificationId", "setAuthenticationVerificationId");
+
       setPropertyMethods.put("virtualThreads", "setVirtualThreads");
       setPropertyMethods.put("trimCharFields", "setTrimCharFields");
 
@@ -977,7 +981,8 @@ public class AS400JDBCDataSourceBeanInfoTestcase extends Testcase {
       propertyShortDescs.put("useSock5", "Specifies that Socks5 should be used for the proxy support.");
       propertyShortDescs.put("virtualThreads", "Specifies that virtual threads should be used when available.");
       propertyShortDescs.put("trimCharFields", "Specifies whether to remove trailing spaces from char fields.");
-      
+      propertyShortDescs.put("authenticationVerificationId",
+          "Specified the verification id to be passed when authenticating to the system.");
 
       for (int i = 0; i < pd.length; i++) {
 

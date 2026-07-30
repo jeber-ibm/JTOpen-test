@@ -13,9 +13,9 @@
 
 ////////////////////////////////////////////////////////////////////////
 //
-// File Name:    JDStatementStressTest.java
+// File Name:    JDStatementStressCCSID.java
 //
-// Classes:      JDStatementStressTest
+// Classes:      JDStatementStressCCSID
 //
 ////////////////////////////////////////////////////////////////////////
 
@@ -40,7 +40,7 @@ import test.JD.JDTestUtilities;
 
 
 /**
-Testcase JDStatementStressTest.  This tests multithreaded
+Testcase JDStatementStressCCSID.  This tests multithreaded
 use of parts of the JDBC driver.
 
 This also stresses the use of different CCSIDs.. 
@@ -91,7 +91,7 @@ Constructor.
                         String password,
                         String miscParm)
     {
-        super (systemObject, "JDStatementStressTest",
+        super (systemObject, "JDStatementStressCCSID",
             namesAndVars, runMode, fileOutputStream,
             password);
 

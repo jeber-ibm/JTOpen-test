@@ -75,14 +75,6 @@ public class DDMPosition extends Testcase {
   /**
    * Constructor. This is called from the DDMTest constructor.
    **/
-  public DDMPosition(AS400 systemObject, Vector<String> variationsToRun, int runMode,
-      FileOutputStream fileOutputStream,  String testLib) {
-    // Replace the third parameter (3) with the total number of variations
-    // in this testcase.
-    super(systemObject, "DDMPosition", 109, // @A1C @A2C
-        variationsToRun, runMode, fileOutputStream);
-    setTestLib(testLib);
-  }
 
   public DDMPosition(AS400 systemObject, Vector<String> variationsToRun, int runMode,
       FileOutputStream fileOutputStream,  String testLib,
