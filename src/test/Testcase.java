@@ -2389,11 +2389,15 @@ public abstract class Testcase {
     // System.out.println("Unable to determine system VRM.");
     // }
 
-    String fullyQualifiedName = this.getClass().getName();
-    int index = fullyQualifiedName.lastIndexOf('.');
-    name_ = (index != -1) ? fullyQualifiedName.substring(index + 1)
-        : fullyQualifiedName;
-
+    //
+    // Only set if the name is not already set
+    // Otherwise, tests like DDMReadSeq0 do not get named
+    // properly. 
+    if (name_ == null) {
+      String fullyQualifiedName = this.getClass().getName();
+      int index = fullyQualifiedName.lastIndexOf('.');
+      name_ = (index != -1) ? fullyQualifiedName.substring(index + 1) : fullyQualifiedName;
+    }
     totalVariations_ = countVariations();
 
     variationsToRun_ = namesAndVars.get(name_);

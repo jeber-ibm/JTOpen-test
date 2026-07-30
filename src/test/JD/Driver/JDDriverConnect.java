@@ -94,7 +94,7 @@ public class JDDriverConnect extends JDTestcase {
 
   public JDDriverConnect(AS400 systemObject, Hashtable<String,Vector<String>> namesAndVars, int runMode, FileOutputStream fileOutputStream,
       String password, String powerUserID, String powerPassword) {
-    super(systemObject, "JDDriverMisc", namesAndVars, runMode, fileOutputStream, password, powerUserID, powerPassword);
+    super(systemObject, "JDDriverConnect", namesAndVars, runMode, fileOutputStream, password, powerUserID, powerPassword);
 
     systemObject_ = systemObject;
 

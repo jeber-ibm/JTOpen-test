@@ -15,8 +15,15 @@ package test;
 
 import java.beans.PropertyVetoException;
 import java.io.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Enumeration;
+import java.util.Hashtable;
+import java.util.Properties;
 import java.util.Vector;
 import com.ibm.as400.access.*;
 
@@ -27,11 +34,20 @@ import com.ibm.as400.access.*;
  */
 public class JTOpenEclipseExport extends Thread {
 
+  private static boolean isWindows;
+  private static boolean skipSameLen = false;
+  private static boolean refreshAll = false; 
   String as400Name_;
   String userid_;
   String password_;
   private String compileError;
 
+  static {
+	  String osName= System.getProperty("os.name"); 
+	  if (osName.indexOf("Win") >= 0) {
+		  isWindows = true; 
+	  }
+  }
   public JTOpenEclipseExport(String as400Name, String userid, String password) {
     as400Name_ = as400Name;
     userid_ = userid;
@@ -50,9 +66,10 @@ public class JTOpenEclipseExport extends Thread {
   }
 
   public static void usage() {
-    System.out.println("Usage:  java  test.JTOpenEclipseExport IBMi[+IBMi]* userid password   ");
+    System.out.println("Usage:  java  test.JTOpenEclipseExport IBMi[+IBMi]* userid password   [REFRESHALL]  ");
     System.out.println("   Updates IBM i systems with the latest test changes in the Eclipse Environment");
     System.out.println("   Uses {user.dir}/lastUpdate.$system as a time marker");
+    System.out.println("   If REFRESHALL is selected, the size of the files are checked and different sized files are moved to the system");
   }
 
   public static String export(String as400Name, String userid, String password) throws Exception {   
@@ -117,9 +134,22 @@ public class JTOpenEclipseExport extends Thread {
       System.out.println("EXPORTING to " + as400Name);
       String userid = args[1];
       String password = args[2];
+      if (args.length > 3) { 
+        if ("REFRESHALL".equals(args[3])) { 
+          System.out.println("REFRESHING ALL WITH DIFFERENT SIZE"); 
+          refreshAll = true; 
+          skipSameLen = true; 
+        }
+      }
+
       if (as400Name.indexOf('+') < 0) {
          String compileError = export(as400Name, userid, password); 
-         if (compileError != null) { System.out.println("Hit compile erorr "+compileError); }
+         if (compileError == null) { 
+           System.out.println("Export to "+as400Name+" completed"); 
+           
+         } else { 
+           System.out.println("Export to "+as400Name+" FAILED  with "+compileError); 
+         }
       } else {
         String[] systems = as400Name.split("\\+");
         JTOpenEclipseExport[] threads = new JTOpenEclipseExport[systems.length];
@@ -145,7 +175,8 @@ public class JTOpenEclipseExport extends Thread {
                 }
                 systemList += " " + systems[i];
                 completedCount++;
-                System.out.println("Export completed for " + (completedCount) + "/" + systems.length + " systems " + systemList);
+                System.out.println(
+                    "Export completed for " + (completedCount) + "/" + systems.length + " systems " + systemList);
                 joined[i] = true; 
               }
             }
@@ -224,14 +255,66 @@ public class JTOpenEclipseExport extends Thread {
   }
 
   static void transferFiles(AS400 as400, String testDirectory, Vector<String> fileList)
-      throws IOException, AS400SecurityException {
+			throws IOException, AS400SecurityException, SQLException {
     String prefix = as400.getSystemName() + ":" + as400.getUserId() + ":";
     int totalCount = fileList.size();
     int count = 0;
     int transferCount = 0;
     long totalTransferTime = 0; 
     long startMillis = System.currentTimeMillis();
-    System.out.println(prefix + "Transferring " + totalCount + " files");
+		Hashtable<String,Long> sizeHash = new Hashtable<String,Long>(); 
+    Hashtable<String,Timestamp> timeHash = new Hashtable<String,Timestamp>(); 
+		
+    AS400JDBCDriver driver = new AS400JDBCDriver(); 
+    
+    Properties jdbcProperties = new Properties();
+    jdbcProperties.put("block size", "512"); 
+    Connection connection = driver.connect(as400,jdbcProperties,"QGPL"); 
+    Statement s = connection.createStatement(); 
+    int changeSize = fileList.size();
+		if (changeSize < 500) { 
+	    System.out.println(prefix + "Gathering some file statistics for changed size of "+changeSize); 
+      String sql = "select PATH_NAME, DATA_SIZE, MAX(CREATE_TIMESTAMP, DATA_CHANGE_TIMESTAMP) AS TS from table(IFS_OBJECT_STATISTICS( ? )) ";
+		  PreparedStatement ps = connection.prepareStatement(sql); 
+		  
+	    Enumeration<String> enumeration = fileList.elements();
+	    int statCount = 0; 
+	    while (enumeration.hasMoreElements()) {
+	      statCount++;
+	      String localFilename = enumeration.nextElement();
+	      String remoteFilename = getRemoteFilename(testDirectory, localFilename);
+	      ps.setString(1, remoteFilename); 
+	      ResultSet rs = ps.executeQuery(); 
+	      while (rs.next()) {
+	        String filename = rs.getString(1);
+	        sizeHash.put(filename, Long.valueOf(rs.getLong(2)));
+	        timeHash.put(filename, rs.getTimestamp(3));
+	        if (statCount % 1000 == 0)
+	          System.out.println(prefix+" statCount="+statCount );
+	      }
+	      rs.close(); 
+	    }
+		  
+    } else {
+      System.out.println("Gathering all statistics for changed size of " + changeSize);
+      String sql = "select PATH_NAME, DATA_SIZE, MAX(CREATE_TIMESTAMP, DATA_CHANGE_TIMESTAMP) AS TS from table(IFS_OBJECT_STATISTICS('/home/jdbctest', OMIT_LIST=>'/home/jdbctest/ct /home/jdbctest/gen /home/jdbctest/build')) ";
+      ResultSet rs = s.executeQuery(sql);
+      System.out.println("Gathering query results");
+      int statCount = 0; 
+      while (rs.next()) {
+        String filename = rs.getString(1);
+        statCount++; 
+        sizeHash.put(filename, Long.valueOf(rs.getLong(2)));
+        timeHash.put(filename, rs.getTimestamp(3));
+        if (statCount % 1000 == 0)
+          System.out.println(prefix+" statCount="+statCount );
+      }
+      rs.close(); 
+    }
+    s.close(); 
+    connection.close(); 
+		
+		
     Enumeration<String> enumeration = fileList.elements();
     int skipCount = 0; 
     while (enumeration.hasMoreElements()) {
@@ -249,31 +332,60 @@ public class JTOpenEclipseExport extends Thread {
       int left = totalCount - count;
       double leftSeconds = left * millisPerFile / 1000;
       count++;
-      IFSFile ifsFile = new IFSFile(as400, remoteFilename);
       File localFile = new File(testDirectory + File.separatorChar + localFilename);
-      if (localFile.lastModified() <= ifsFile.lastModified()) {
+			long ifsLastModified = 0;
+			Timestamp ifsTime = timeHash.get(remoteFilename);
+			if (ifsTime != null) ifsLastModified = ifsTime.getTime(); 
+			if (localFile.lastModified() <= ifsLastModified && !refreshAll) {
         skipCount++; 
         if(skipCount % 100 == 1) 
-           System.out.println(count+"/"+totalCount+" ("+leftSeconds+" s) "+prefix+"Skipping "+remoteFilename);
+					System.out.println(
+							count + "("+skipCount+")/" + totalCount + " (" + leftSeconds + " s) " + prefix + "  " + remoteFilename);
 
       } else {
-        skipCount = 0; 
+			  
+				boolean doTransfer = true;
+        Long longLen = sizeHash.get(remoteFilename); 
+				if ((longLen != null)  && skipSameLen ) {
+					long localLen = calculateUnixLen(localFile);
+					long remoteLen = 0;
+					remoteLen = longLen.longValue(); 
+					if (localLen == remoteLen ) {
+						doTransfer = false; 
+						skipCount++;
+						if (skipCount % 100 == 1)
+							System.out.println(prefix+" "+(count-skipCount)+"+"+skipCount+"="+count+"/" + totalCount + " (" + leftSeconds + " s) "  + remoteFilename);
+						if (skipCount % 1000 == 1) {
+							long endTime = System.currentTimeMillis() + (long)(leftSeconds*1000);
+						    Timestamp endTs = new Timestamp(endTime); 
+						    System.out.println(prefix+" Predict completion at "+endTs); 
+						}
+					}
+				}
+				if (doTransfer) {
         transferCount++;
-      System.out.println(count+"/"+totalCount+" ("+leftSeconds+" s) "+prefix+"Transferring to "+remoteFilename);
+          System.out.println(prefix+" "+(count-skipCount)+"+"+skipCount+"="+count+"/" + totalCount + " (" + leftSeconds + " s) Transferring to "  + remoteFilename);
 
       long startTransferTime = System.currentTimeMillis(); 
+			    IFSFile ifsFile = new IFSFile(as400, remoteFilename);
         ifsFile.delete();
         verifyParent(ifsFile);
         ifsFile.createNewFile();
+					if (binary) { 
+            ifsFile.setCCSID(65535);
+					} else { 
         ifsFile.setCCSID(1208);
+					}
         @SuppressWarnings("resource")
         IFSFileOutputStream ifsFileOutputStream = new IFSFileOutputStream(ifsFile);
         @SuppressWarnings("resource")
-        FileInputStream fileInputStream = new FileInputStream(testDirectory + File.separatorChar + localFilename);
+					FileInputStream fileInputStream = new FileInputStream(
+							testDirectory + File.separatorChar + localFilename);
         byte[] buffer = new byte[65536];
         int bytesRead = fileInputStream.read(buffer);
         while (bytesRead >= 0) {
-          int bytesToWrite = bufferCleanup(buffer, bytesRead, binary);
+						int bytesToWrite;
+						bytesToWrite = bufferCleanup(buffer, bytesRead, binary);
           ifsFileOutputStream.write(buffer, 0, bytesToWrite);
           bytesRead = fileInputStream.read(buffer);
         }
@@ -283,11 +395,34 @@ public class JTOpenEclipseExport extends Thread {
       totalTransferTime += endTransferTime - startTransferTime; 
       }
     }
+		}
 
+	}
+
+  private static long calculateUnixLen(File localFile) throws IOException {
+
+	  if (isWindows) { 
+		  FileReader reader = new FileReader(localFile); 
+		  char[] buffer = new char[16384]; 
+		  long count = 0; 
+		int readChars = reader.read(buffer);  
+		while (readChars > 0) { 
+			for (int i = 0; i < readChars; i++) {
+				if (buffer[i] != 0x0d) {
+					count++;
+				}
+			}
+			readChars = reader.read(buffer);  
+		}
+		reader.close(); 
+		return count; 
   }
+	  return localFile.length();
+	}
 
   static boolean isBinaryFile(String localFilename) {
     if (localFilename.endsWith(".zip")) return true; 
+    if (localFilename.endsWith(".jar")) return true; 
     if (localFilename.endsWith(".savf")) return true; 
     return false;
   }
@@ -311,9 +446,14 @@ public class JTOpenEclipseExport extends Thread {
       File f = files[i];
       String fName = f.getName();
       if ((fName.indexOf(".git") < 0) &&
-          !(fName.equals("gen"))){
+    		  (fName.indexOf(".class") < 0) &&
+          !(fName.equals("gen")) &&
+          !(fName.equals("bin")) &&
+          (fName.indexOf("deleteMe") < 0) &&
+          (fName.indexOf("runit") < 0) &&
+          (fName.indexOf(".out") < 0)){
         if (f.isFile()) {
-          if (f.lastModified() > lastModifiedTime) {
+          if ((f.lastModified() > lastModifiedTime) || refreshAll) {
             if (prefix.length() > 0) {
               returnList.add(prefix + File.separator + fName);
             } else {
