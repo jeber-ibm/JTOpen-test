@@ -1142,7 +1142,7 @@ public abstract class JDTestDriver extends TestDriver {
     if (pwrSysUserID_ != null) {
       if (!pwrSysUserID_.equals(userId)) {
         try {
-          String password = PasswordVault.decryptPasswordLeak(encryptedPassword_, "JDTestDriver.grantPackagePermissions"); 
+          String password = PasswordVault.decryptPasswordLeak(pwrSysEncryptedPassword_, "JDTestDriver.grantPackagePermissions"); 
           Connection changeConnection = DriverManager.getConnection(url,
               pwrSysUserID_, password);
 
@@ -1156,9 +1156,14 @@ public abstract class JDTestDriver extends TestDriver {
           /* grant permission for the packages */
           while (rs.next()) {
             String packageName = rs.getString(1);
-
-            grantStatement.executeUpdate("GRANT ALL ON " + library + "."
-                + packageName + " TO " + userId);
+            String sql = "GRANT ALL ON PACKAGE " + library + "."
+                + packageName + " TO USER " + userId;
+            try { 
+              grantStatement.executeUpdate(sql);
+            } catch (Exception e) {
+              System.out.println("Failing SQL statement was "+sql);     
+              throw e; 
+            }
 
           }
           rs.close(); 
